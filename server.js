@@ -12,7 +12,16 @@ const wss = new WebSocket.Server({ server, path: "/ws" });
 const ROWS = 6;
 const COLS = 7;
 
-// roomCode -> { board, players, current, gameOver, winnerId }
+/**
+ * rooms:
+ *  roomCode -> {
+ *    board: 2D array of "A" | "B" | null,
+ *    players: [{ id, name, team: "A" | "B" }],
+ *    turnTeam: "A" | "B",
+ *    gameOver: boolean,
+ *    winnerTeam: "A" | "B" | null
+ *  }
+ */
 const rooms = new Map();
 
 function createEmptyBoard() {
@@ -25,13 +34,17 @@ function getRoom(code) {
   if (!rooms.has(code)) {
     rooms.set(code, {
       board: createEmptyBoard(),
-      players: [], // {id, name}
-      current: 0,
+      players: [],
+      turnTeam: "A", // يبدأ فريق الأزرق
       gameOver: false,
-      winnerId: null
+      winnerTeam: null
     });
   }
   return rooms.get(code);
+}
+
+function randomId() {
+  return Math.random().toString(36).slice(2, 10);
 }
 
 function broadcastRoom(code) {
@@ -43,9 +56,9 @@ function broadcastRoom(code) {
     roomCode: code,
     board: room.board,
     players: room.players,
-    current: room.current,
+    turnTeam: room.turnTeam,
     gameOver: room.gameOver,
-    winnerId: room.winnerId
+    winnerTeam: room.winnerTeam
   });
 
   wss.clients.forEach((client) => {
@@ -58,7 +71,7 @@ function broadcastRoom(code) {
   });
 }
 
-function checkWin(board, row, col, playerIndex) {
+function checkWin(board, row, col, team) {
   const dirs = [
     [1, 0],  // عمودي
     [0, 1],  // أفقي
@@ -69,6 +82,7 @@ function checkWin(board, row, col, playerIndex) {
   for (const [dr, dc] of dirs) {
     let count = 1;
 
+    // اتجاه أول
     let r = row + dr;
     let c = col + dc;
     while (
@@ -76,13 +90,14 @@ function checkWin(board, row, col, playerIndex) {
       r < ROWS &&
       c >= 0 &&
       c < COLS &&
-      board[r][c] === playerIndex
+      board[r][c] === team
     ) {
       count++;
       r += dr;
       c += dc;
     }
 
+    // الاتجاه الثاني
     r = row - dr;
     c = col - dc;
     while (
@@ -90,7 +105,7 @@ function checkWin(board, row, col, playerIndex) {
       r < ROWS &&
       c >= 0 &&
       c < COLS &&
-      board[r][c] === playerIndex
+      board[r][c] === team
     ) {
       count++;
       r -= dr;
@@ -107,13 +122,8 @@ function isBoardFull(board) {
   return board[0].every((cell) => cell !== null);
 }
 
-function randomId() {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-// WebSocket logic
 wss.on("connection", (ws) => {
-  ws.id = randomId();
+  ws.id = randomId(); // هوية اللاعب على هذا الاتصال
 
   ws.on("message", (msg) => {
     let data;
@@ -123,31 +133,53 @@ wss.on("connection", (ws) => {
       return;
     }
 
+    // الانضمام لروم
     if (data.type === "join") {
-      const { roomCode, name } = data;
-      if (!roomCode || !name) return;
+      const { roomCode, name, team } = data;
+      if (!roomCode || !name || (team !== "A" && team !== "B")) return;
 
-      const room = getRoom(roomCode);
-      ws.roomCode = roomCode;
+      const code = String(roomCode).toUpperCase();
+      const room = getRoom(code);
+      ws.roomCode = code;
 
-      // هل اللاعب موجود؟
+      // حد أقصى 4 لاعبين لكل فريق
+      const teamCount = room.players.filter((p) => p.team === team).length;
+      if (teamCount >= 4) {
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            message: "هذا الفريق مليان (4 لاعبين كحد أقصى)"
+          })
+        );
+        return;
+      }
+
+      // حد أقصى 8 لاعبين في الروم كله
+      if (!room.players.find((p) => p.id === ws.id) && room.players.length >= 8) {
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            message: "الغرفة مليانة (8 لاعبين كحد أقصى)"
+          })
+        );
+        return;
+      }
+
+      // إضافة / تحديث اللاعب
       let player = room.players.find((p) => p.id === ws.id);
       if (!player) {
-        if (room.players.length >= 4) {
-          ws.send(
-            JSON.stringify({
-              type: "error",
-              message: "الغرفة مليانة (الحد 4 لاعبين)"
-            })
-          );
-          return;
-        }
-        player = { id: ws.id, name: String(name).slice(0, 20) };
+        player = {
+          id: ws.id,
+          name: String(name).slice(0, 20),
+          team
+        };
         room.players.push(player);
       } else {
         player.name = String(name).slice(0, 20);
+        player.team = team;
       }
 
+      // نرسل له أنه انضم (لو حاب تستخدمه في الواجهة)
       ws.send(
         JSON.stringify({
           type: "joined",
@@ -155,28 +187,29 @@ wss.on("connection", (ws) => {
         })
       );
 
-      broadcastRoom(roomCode);
+      broadcastRoom(code);
     }
 
-        // حركة في العمود
+    // حركة في عمود
     if (data.type === "move") {
-      const { roomCode, col } = data;      // ما نحتاج playerId هنا
-      const room = rooms.get(roomCode);
+      const { roomCode, col } = data;
+      const code = roomCode ? String(roomCode).toUpperCase() : ws.roomCode;
+      const room = rooms.get(code);
       if (!room || room.gameOver) return;
 
-      // نجيب اللاعب من الـ ws.id نفسه
+      // نحدد اللاعب من ws.id وليس من playerId من الكلاينت
       const player = room.players.find((p) => p.id === ws.id);
       if (!player) return;
 
       // لازم يكون دور فريقه
       if (player.team !== room.turnTeam) return;
 
-      if (col < 0 || col >= COLS) return;
+      if (typeof col !== "number" || col < 0 || col >= COLS) return;
 
       let placedRow = null;
       for (let r = ROWS - 1; r >= 0; r--) {
         if (room.board[r][col] === null) {
-          room.board[r][col] = player.team; // نخزن الفريق A أو B
+          room.board[r][col] = player.team; // "A" أو "B"
           placedRow = r;
           break;
         }
@@ -193,68 +226,37 @@ wss.on("connection", (ws) => {
         room.turnTeam = room.turnTeam === "A" ? "B" : "A";
       }
 
-      broadcastRoom(roomCode);
-    } 
-    const { roomCode, col, playerId } = data;
-      const room = rooms.get(roomCode);
-      if (!room || room.gameOver) return;
-
-      const playerIndex = room.players.findIndex((p) => p.id === playerId);
-      if (playerIndex === -1) return;
-      if (playerIndex !== room.current) return; // مو دورك
-
-      if (col < 0 || col >= COLS) return;
-
-      let placedRow = null;
-      for (let r = ROWS - 1; r >= 0; r--) {
-        if (room.board[r][col] === null) {
-          room.board[r][col] = playerIndex;
-          placedRow = r;
-          break;
-        }
-      }
-      if (placedRow === null) return; // العمود مليان
-
-      if (checkWin(room.board, placedRow, col, playerIndex)) {
-        room.gameOver = true;
-        room.winnerId = playerId;
-      } else if (isBoardFull(room.board)) {
-        room.gameOver = true;
-        room.winnerId = null; // تعادل
-      } else {
-        const count = room.players.length || 1;
-        room.current = (room.current + 1) % count;
-      }
-
-      broadcastRoom(roomCode);
+      broadcastRoom(code);
     }
 
+    // لعبة جديدة
     if (data.type === "newGame") {
       const { roomCode } = data;
-      const room = rooms.get(roomCode);
+      const code = roomCode ? String(roomCode).toUpperCase() : ws.roomCode;
+      const room = rooms.get(code);
       if (!room) return;
 
       room.board = createEmptyBoard();
-      room.current = 0;
+      room.turnTeam = "A";
       room.gameOver = false;
-      room.winnerId = null;
+      room.winnerTeam = null;
 
-      broadcastRoom(roomCode);
+      broadcastRoom(code);
     }
   });
 
   ws.on("close", () => {
-    const roomCode = ws.roomCode;
-    if (!roomCode) return;
-    const room = rooms.get(roomCode);
+    const code = ws.roomCode;
+    if (!code) return;
+    const room = rooms.get(code);
     if (!room) return;
 
     room.players = room.players.filter((p) => p.id !== ws.id);
+
     if (room.players.length === 0) {
-      rooms.delete(roomCode);
+      rooms.delete(code);
     } else {
-      room.current %= room.players.length;
-      broadcastRoom(roomCode);
+      broadcastRoom(code);
     }
   });
 });
@@ -266,7 +268,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// لازم نستخدم PORT من Railway
+// بورت Railway
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log("Server listening on port", PORT);
