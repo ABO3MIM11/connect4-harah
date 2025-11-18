@@ -306,7 +306,7 @@
     let selectedTeam = "A";
     let ws;
     let roomCode = null;
-    let playerId = null;
+    let playerId = null; // نستخدمه بس عشان نعلّم "أنت" في القائمة
     let board = [];
     let players = [];
     let turnTeam = "A";
@@ -356,9 +356,11 @@
       });
       ws.addEventListener("message", (ev) => {
         const data = JSON.parse(ev.data);
+
         if (data.type === "joined") {
-          playerId = data.playerId;
+          playerId = data.playerId; // نقدر نستخدمه لتعريف "أنت" فقط
         }
+
         if (data.type === "state") {
           roomCode = data.roomCode;
           board = data.board;
@@ -370,6 +372,7 @@
           updateUrlRoom(roomCode);
           renderState();
         }
+
         if (data.type === "error") {
           alert(data.message);
         }
@@ -427,10 +430,11 @@
     });
 
     function handleColumnClick(col) {
-      if (!roomCode || !playerId) {
+      if (!roomCode) {
         alert("ادخل الروم باسمك وفريقك أول 🔥");
         return;
       }
+      // اللاعب يتحدد في السيرفر عن طريق ws.id، playerId هنا فقط للـ UI
       send({ type: "move", roomCode, col, playerId });
     }
 
@@ -511,19 +515,12 @@
         return;
       }
 
-      const my = players.find((p) => p.id === playerId);
-      const myTeam = my?.team;
-
       const teamName = (team) =>
         team === "A" ? "فريق الأزرق السافاير 🔵" : "فريق النار البرتقالي 🟠";
 
       statusLabel.textContent = `دور ${teamName(turnTeam)}`;
-
-      if (myTeam === turnTeam) {
-        statusHint.textContent = "دور فريقك الآن! اتفقوا وحط الحبة بالضغط على العمود.";
-      } else {
-        statusHint.textContent = "انتظر الفريق الثاني يلعب. عدد الأزرق: " + teamACount + " | البرتقالي: " + teamBCount;
-      }
+      statusHint.textContent =
+        "عدد الأزرق: " + teamACount + " | عدد البرتقالي: " + teamBCount;
     }
 
     function renderState() {
@@ -534,13 +531,6 @@
 
     // أول رندر مبدئي
     renderState();
-
-    // لو كان فيه room بالرابط، نخلي المستخدم يكتب اسمه ويضغط الدخول بعد ما يتصل WS
-    if (urlRoom) {
-      roomCode = urlRoom.toUpperCase();
-      roomCodeInput.value = roomCode;
-      // الاتصال يتم عند ضغط "إنشاء / دخول الروم"
-    }
   </script>
 </body>
 </html>
