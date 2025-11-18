@@ -158,8 +158,44 @@ wss.on("connection", (ws) => {
       broadcastRoom(roomCode);
     }
 
-        // حركة في العمود     if (data.type === "move") {       const { roomCode, col } = data;      // ما نحتاج playerId هنا       const room = rooms.get(roomCode);       if (!room || room.gameOver) return;        // نجيب اللاعب من الـ ws.id نفسه       const player = room.players.find((p) => p.id === ws.id);       if (!player) return;        // لازم يكون دور فريقه       if (player.team !== room.turnTeam) return;        if (col < 0 || col >= COLS) return;        let placedRow = null;       for (let r = ROWS - 1; r >= 0; r--) {         if (room.board[r][col] === null) {           room.board[r][col] = player.team; // نخزن الفريق A أو B           placedRow = r;           break;         }       }       if (placedRow === null) return; // العمود مليان        if (checkWin(room.board, placedRow, col, player.team)) {         room.gameOver = true;         room.winnerTeam = player.team;       } else if (isBoardFull(room.board)) {         room.gameOver = true;         room.winnerTeam = null; // تعادل       } else {         room.turnTeam = room.turnTeam === "A" ? "B" : "A";       }        broadcastRoom(roomCode);     }
-      const { roomCode, col, playerId } = data;
+        // حركة في العمود
+    if (data.type === "move") {
+      const { roomCode, col } = data;      // ما نحتاج playerId هنا
+      const room = rooms.get(roomCode);
+      if (!room || room.gameOver) return;
+
+      // نجيب اللاعب من الـ ws.id نفسه
+      const player = room.players.find((p) => p.id === ws.id);
+      if (!player) return;
+
+      // لازم يكون دور فريقه
+      if (player.team !== room.turnTeam) return;
+
+      if (col < 0 || col >= COLS) return;
+
+      let placedRow = null;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (room.board[r][col] === null) {
+          room.board[r][col] = player.team; // نخزن الفريق A أو B
+          placedRow = r;
+          break;
+        }
+      }
+      if (placedRow === null) return; // العمود مليان
+
+      if (checkWin(room.board, placedRow, col, player.team)) {
+        room.gameOver = true;
+        room.winnerTeam = player.team;
+      } else if (isBoardFull(room.board)) {
+        room.gameOver = true;
+        room.winnerTeam = null; // تعادل
+      } else {
+        room.turnTeam = room.turnTeam === "A" ? "B" : "A";
+      }
+
+      broadcastRoom(roomCode);
+    } 
+    const { roomCode, col, playerId } = data;
       const room = rooms.get(roomCode);
       if (!room || room.gameOver) return;
 
