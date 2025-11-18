@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>موقع كونيكت 4 الحارة</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin:0; padding:0; }
+
+    :root {
+      --bg-dark: #050913;
+      --text-main: #e8f6ff;
+      --neon-blue: #00d0ff;
+      --neon-sapphire: #2f4bff;
+    }
+
+    body {
+      height: 100vh;
+      background:
+        radial-gradient(circle at 0 0, #07111f, #020308),
+        radial-gradient(circle at 100% 100%, #0b1630, #020308);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .overlay {
+      position: relative;
+      width: min(1100px, 100%);
+      height: min(620px, 95vh);
+      padding: 20px 26px 28px;
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 20% 0, rgba(0, 168, 255, 0.3), transparent 60%),
+        radial-gradient(circle at 80% 100%, rgba(56, 0, 255, 0.25), transparent 55%),
+        repeating-radial-gradient(circle, rgba(5, 20, 40, 0.85) 0 8px, rgba(1, 5, 15, 0.95) 8px 16px);
+      box-shadow:
+        0 0 20px rgba(0, 200, 255, 0.4),
+        0 0 60px rgba(0, 80, 200, 0.4) inset;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    .overlay::before,
+    .overlay::after {
+      content: "";
+      position: absolute;
+      left: 40px;
+      right: 40px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(0, 225, 255, 0.9) 20%,
+        rgba(3, 140, 255, 0.9) 50%,
+        rgba(0, 225, 255, 0.9) 80%,
+        transparent 100%
+      );
+      filter: drop-shadow(0 0 12px rgba(0, 200, 255, 0.8));
+      opacity: 0.9;
+    }
+    .overlay::before { top: 52px; }
+    .overlay::after  { bottom: 70px; }
+
+    header {
+      text-align: center;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      font-size: clamp(18px, 2.3vw, 24px);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      text-shadow:
+        0 0 8px rgba(0, 200, 255, 0.9),
+        0 0 18px rgba(0, 120, 255, 0.9);
+    }
+
+    header span {
+      background: linear-gradient(120deg, #00f0ff, #4d7dff, #00e9ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .game-frame {
+      position: relative;
+      width: min(520px, 90%);
+      height: min(420px, 70vh);
+      border-radius: 18px;
+      border: 2px solid rgba(0, 230, 255, 0.85);
+      box-shadow:
+        0 0 15px rgba(0, 220, 255, 0.8),
+        0 0 40px rgba(0, 140, 255, 0.8) inset;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: radial-gradient(circle at 50% 0, rgba(0, 180, 255, 0.14), transparent 70%);
+      overflow: hidden;
+    }
+
+    .game-frame::before {
+      content: "";
+      position: absolute;
+      inset: -25px;
+      background:
+        conic-gradient(
+          from 0deg,
+          rgba(0, 220, 255, 0.0),
+          rgba(0, 220, 255, 0.5),
+          rgba(60, 0, 255, 0.0),
+          rgba(0, 220, 255, 0.55),
+          rgba(0, 220, 255, 0.0)
+        );
+      mix-blend-mode: screen;
+      opacity: 0.45;
+      filter: blur(14px);
+      animation: flamePulse 6s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes flamePulse {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.03); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    #board {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 6px;
+      padding: 6px;
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 10% 0, rgba(0, 180, 255, 0.12), transparent 65%),
+        linear-gradient(145deg, rgba(3, 10, 26, 0.98), rgba(2, 5, 18, 0.97));
+      box-shadow:
+        0 0 16px rgba(0, 150, 255, 0.6) inset,
+        0 0 25px rgba(0, 50, 120, 0.8);
+    }
+
+    .cell {
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 20%, #0b182b, #020612);
+      border: 2px solid rgba(0, 200, 255, 0.35);
+      box-shadow:
+        0 0 6px rgba(0, 200, 255, 0.4) inset,
+        0 0 10px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.08s ease-out, box-shadow 0.1s ease-out, border-color 0.1s;
+    }
+
+    .cell:hover {
+      transform: translateY(-2px);
+      border-color: rgba(0, 240, 255, 0.9);
+      box-shadow:
+        0 0 14px rgba(0, 230, 255, 0.8),
+        0 0 12px rgba(0, 100, 255, 0.7) inset;
+    }
+
+    .chip0 {
+      background: radial-gradient(circle at 30% 20%, #4af3ff, #006bff);
+      box-shadow:
+        0 0 10px rgba(0, 240, 255, 0.9),
+        0 0 18px rgba(0, 115, 255, 0.9);
+    }
+    .chip1 {
+      background: radial-gradient(circle at 30% 20%, #8fe0ff, #2231ff);
+      box-shadow:
+        0 0 10px rgba(94, 194, 255, 0.9),
+        0 0 18px rgba(26, 71, 255, 0.9);
+    }
+    .chip2 {
+      background: radial-gradient(circle at 30% 20%, #b5f3ff, #2c0dff);
+      box-shadow:
+        0 0 10px rgba(170, 225, 255, 0.9),
+        0 0 18px rgba(80, 30, 255, 0.9);
+    }
+    .chip3 {
+      background: radial-gradient(circle at 30% 20%, #7af9ff, #00a1ff);
+      box-shadow:
+        0 0 10px rgba(0, 255, 245, 0.95),
+        0 0 20px rgba(0, 163, 255, 0.95);
+    }
+
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 6px;
+      position: relative;
+      z-index: 2;
+      font-size: 14px;
+    }
+
+    .status-text {
+      font-size: 13px;
+      text-align: center;
+      flex: 1;
+      text-shadow: 0 0 10px rgba(0, 200, 255, 0.9);
+    }
+    .status-text span {
+      font-weight: 700;
+      color: #00f2ff;
+    }
+
+    .controls-right,
+    .controls-left {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 180px;
+    }
+
+    .controls-left label,
+    .controls-right label {
+      font-size: 11px;
+      opacity: 0.85;
+    }
+
+    input, button {
+      background: rgba(1, 10, 25, 0.9);
+      border-radius: 999px;
+      border: 1px solid rgba(0, 220, 255, 0.7);
+      padding: 6px 10px;
+      color: var(--text-main);
+      font-size: 12px;
+      outline: none;
+      box-shadow: 0 0 10px rgba(0, 150, 255, 0.7);
+    }
+
+    input::placeholder {
+      color: rgba(180, 210, 240, 0.7);
+    }
+
+    button {
+      cursor: pointer;
+      text-align: center;
+    }
+    button:hover {
+      background: rgba(0, 35, 80, 0.9);
+    }
+
+    .small {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+
+    .me-label {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .players-list {
+      font-size: 11px;
+    }
+
+    @media (max-width: 750px) {
+      .overlay { padding-inline: 14px; }
+      .overlay::before,
+      .overlay::after { left: 20px; right: 20px; }
+      footer { flex-direction: column; align-items: stretch; }
+      .controls-left, .controls-right { width: 100%; flex-direction: row; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <header>
+      <span>موقع كونيكت 4 الحارة</span>
+    </header>
+
+    <main>
+      <div class="game-frame">
+        <div id="board"></div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="controls-left">
+        <label>انضم للعبة:</label>
+        <input id="nameInput" placeholder="اسمك (مثال: سافاير)" />
+        <input id="roomInput" placeholder="كود الغرفة (مثال: HAIL1)" />
+        <button id="joinBtn">دخول / تحديث الاسم</button>
+        <div class="small">ارسل كود الغرفة لربعك وخليهم يدخلون نفس الكود.</div>
+      </div>
+
+      <div class="status-text">
+        <div>اللاعب الحالي:</div>
+        <span id="currentPlayerName">—</span>
+        <div class="me-label" id="meInfo"></div>
+        <div class="players-list" id="playersList"></div>
+        <div class="small" id="statusMsg"></div>
+      </div>
+
+      <div class="controls-right">
+        <label>التحكم:</label>
+        <button id="newGameBtn">لعبة جديدة لنفس الغرفة</button>
+        <div class="small">الضغط على أي عمود ينزل فيه حجر لونك إذا كان دورك.</div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const ROWS = 6;
+    const COLS = 7;
+
+    let board = [];
+    let players = [];
+    let currentPlayerIndex = 0;
+    let myPlayerId = null;
+    let myIndex = null;
+    let gameOver = false;
+    let winnerId = null;
+    let roomCode = "";
+
+    const boardEl = document.getElementById("board");
+    const currentPlayerNameEl = document.getElementById("currentPlayerName");
+    const meInfoEl = document.getElementById("meInfo");
+    const playersListEl = document.getElementById("playersList");
+    const statusMsgEl = document.getElementById("statusMsg");
+
+    const nameInput = document.getElementById("nameInput");
+    const roomInput = document.getElementById("roomInput");
+    const joinBtn = document.getElementById("joinBtn");
+    const newGameBtn = document.getElementById("newGameBtn");
+
+    // نحاول ناخذ كود الغرفة من الرابط ?room=
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("room")) {
+      roomInput.value = urlParams.get("room");
+    }
+
+    // اتصال WebSocket مع نفس الهوست
+    const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = wsProtocol + "//" + location.host;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      statusMsgEl.textContent = "متصل بالسيرفر ✅";
+    };
+
+    ws.onclose = () => {
+      statusMsgEl.textContent = "انقطع الاتصال بالسيرفر ❌ (تأكد أن server.js شغال)";
+    };
+
+    ws.onmessage = event => {
+      let data;
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+
+      if (data.type === "joined") {
+        myPlayerId = data.playerId;
+        updateMeInfo();
+      }
+
+      if (data.type === "error") {
+        statusMsgEl.textContent = data.message || "خطأ";
+      }
+
+      if (data.type === "state") {
+        board = data.board || board;
+        players = data.players || [];
+        currentPlayerIndex = data.currentPlayer ?? 0;
+        gameOver = !!data.gameOver;
+        winnerId = data.winnerId ?? null;
+        roomCode = data.roomCode || roomCode;
+
+        myIndex = players.findIndex(p => p.id === myPlayerId);
+        updateBoardUI();
+        updateStatusText();
+      }
+    };
+
+    function send(toSend) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(toSend));
+      } else {
+        statusMsgEl.textContent = "WebSocket مو متصل (افتح الكونسول وتأكد من السيرفر)";
+      }
+    }
+
+    function joinRoom() {
+      const name = nameInput.value.trim() || "لاعب مجهول";
+      const room = roomInput.value.trim() || "HARAH";
+      roomCode = room;
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("room", roomCode);
+      window.history.replaceState({}, "", url.toString());
+
+      send({
+        type: "join",
+        roomCode: roomCode,
+        name: name
+      });
+
+      statusMsgEl.textContent = `انضممت للغرفة: ${roomCode}`;
+    }
+
+    joinBtn.addEventListener("click", joinRoom);
+
+    newGameBtn.addEventListener("click", () => {
+      if (!roomCode) {
+        statusMsgEl.textContent = "ادخل اسمك وكود الغرفة أولاً.";
+        return;
+      }
+      send({ type: "newGame", roomCode });
+    });
+
+    function updateBoardUI() {
+      boardEl.innerHTML = "";
+      if (!board || board.length === 0) {
+        board = Array.from({ length: ROWS }, () =>
+          Array.from({ length: COLS }, () => null)
+        );
+      }
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          const val = board[r][c];
+          if (val !== null) {
+            cell.classList.add("chip" + val);
+          }
+          cell.addEventListener("click", () => handleColumnClick(c));
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function handleColumnClick(col) {
+      if (!roomCode) {
+        statusMsgEl.textContent = "ادخل الغرفة أولاً.";
+        return;
+      }
+      if (gameOver) {
+        statusMsgEl.textContent = "اللعبة منتهية، اضغط (لعبة جديدة).";
+        return;
+      }
+      if (myIndex === null || myIndex === -1) {
+        statusMsgEl.textContent = "انضم كلاعب أولاً.";
+        return;
+      }
+      if (myIndex !== currentPlayerIndex) {
+        statusMsgEl.textContent = "مو دورك الحين 😉";
+        return;
+      }
+
+      send({
+        type: "move",
+        roomCode,
+        col,
+        playerId: myPlayerId
+      });
+    }
+
+    function updateStatusText() {
+      if (!players || players.length === 0) {
+        currentPlayerNameEl.textContent = "—";
+        playersListEl.textContent = "";
+        return;
+      }
+
+      const current = players[currentPlayerIndex];
+      currentPlayerNameEl.textContent = current ? current.name : "—";
+
+      if (gameOver) {
+        if (winnerId === null) {
+          statusMsgEl.textContent = "انتهت اللعبة بالتعادل 🤝";
+        } else {
+          const winner = players.find(p => p.id === winnerId);
+          statusMsgEl.textContent = `🏆 ${winner ? winner.name : "لاعب"} فاز في كونيكت 4 الحارة!`;
+        }
+      } else {
+        statusMsgEl.textContent = `الغرفة: ${roomCode} | عدد اللاعبين: ${players.length}`;
+      }
+
+      let list = "اللاعبون: ";
+      players.forEach((p, idx) => {
+        const marker = idx === currentPlayerIndex ? " (دوره الآن)" : "";
+        list += `${idx + 1}- ${p.name}${marker}  `;
+      });
+      playersListEl.textContent = list;
+
+      updateMeInfo();
+    }
+
+    function updateMeInfo() {
+      if (!myPlayerId) {
+        meInfoEl.textContent = "";
+        return;
+      }
+      if (!players || players.length === 0) {
+        meInfoEl.textContent = "أنت داخل لكن ما فيه لاعبين مسجلين بعد.";
+        return;
+      }
+      myIndex = players.findIndex(p => p.id === myPlayerId);
+      if (myIndex === -1) {
+        meInfoEl.textContent = "أنت متصل لكن مو مضاف كلاعب (اضغط انضم مرة ثانية).";
+        return;
+      }
+      const colors = ["سافاير 1", "سافاير 2", "فليم 3", "فليم 4"];
+      meInfoEl.textContent = `أنت: ${players[myIndex].name} | لونك: ${colors[myIndex] || "سافاير"}`;
+    }
+
+    // بداية: لوحة فاضية
+    board = Array.from({ length: ROWS }, () =>
+      Array.from({ length: COLS }, () => null)
+    );
+    updateBoardUI();
+  </script>
+</body>
+</html>
